@@ -9,6 +9,10 @@ input, button {
   margin-bottom: 5px;
 }
 
+button:enabled {
+  cursor: pointer;
+}
+
 html, body {
   margin: 0; height: 100%;
 }

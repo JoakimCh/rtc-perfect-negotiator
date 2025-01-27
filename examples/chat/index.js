@@ -25,7 +25,7 @@ document.body.append(...unwrap(
     ),
     e.div().tagAndId('chat'),
     e.div(
-      e.label('Message: ', e.input().type('text').tagAndId('input_msg').autocomplete('off').onceAdded(self => self.focus())),
+      e.label('Message: ', e.input().type('text').tagAndId('input_msg').autocomplete('off')),
       e.button('Send').tagAndId('button_send').disabled(true)
     )
   ).id('container')
@@ -57,9 +57,15 @@ wrap(button_create).on('click', async () => {
 
 wrap(button_send).on('click', () => {
   const message = wrap(input_msg).value()
-  wrap(input_msg).value('')
   dataChannel.send(message)
+  wrap(input_msg).value('').focus()
   displayChatMessage(myId+': '+message)
+})
+
+wrap(input_msg).on('keydown', ({key}) => {
+  if (key == 'Enter') {
+    button_send.click()
+  }
 })
 
 globalThis['DEBUG_SIGNALING'] = true
@@ -97,7 +103,7 @@ function displayChatMessage(message) {
 }
 
 function onChatMessage(message) {
-  displayChatMessage(e.p(peerId+': '+message))
+  displayChatMessage(peerId+': '+message)
 }
 
 /** Since there are no reliable events on the RTCPeerConnection to monitor when it is closed we use a data channel to trigger this when it is closed. */
@@ -170,12 +176,12 @@ function initPeerConnectionEvents(peerConnection) {
     }
     channel.onopen = () => {
       debug('data channel opened')
-      clearTimeout(openTimeout)
       hasBeenOpen = true
+      clearTimeout(openTimeout)
       displayChatMessage(peerId+' has entered the chat.')
+      wrap(input_msg).focus()
       wrap(button_send).disabled(false)
       wrap(button_close).disabled(false)
-      wrap(input_msg).focus(true)
     }
     channel.onerror = ({error}) => {
       // this will happen if other side e.g. refresh the tab
