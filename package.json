@@ -1,0 +1,15 @@
+{
+  "name": "rtc-perfect-negotiator",
+  "version": "0.9.0",
+  "description": "When you're tired of fighting the WebRTC API.",
+  "license": "MIT",
+  "type": "module",
+  "main": "RTCPerfectNegotiator.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joakimch/rtc-perfect-negotiator.git"
+  },
+  "files": [
+    "RTCPerfectNegotiator.js"
+  ]
+}
