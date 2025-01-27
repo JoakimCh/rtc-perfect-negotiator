@@ -14,7 +14,6 @@ Only lean and mean, modern and bloat free code designed with the tiniest API's p
 
 > A great programmer writes the smallest amount of code and has the smallest amount of mess in their project!
 
-Modern JS / frontend programming is a disgrace!!!
-
-> I refuse, I resist! My code is art! 😎  
-> Fuck your over-complicated mess!
+Modern JS / frontend programming is a disgrace!!!  
+I refuse, I resist!  My code is art! 😎  
+Fuck your over-complicated mess!
