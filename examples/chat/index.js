@@ -16,22 +16,35 @@ document.body.append(...unwrap(
     e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting.'),
     e.div(
       e.div(
-        e.label('My ID: ', e.input().type('text').tagAndId('input_myId').value(sessionStorage.getItem('myId'))),
-        e.label('Peer ID: ', e.input().type('text').tagAndId('input_peerId').value(sessionStorage.getItem('peerId'))), e.br(),
+        e.label('My ID:', 
+          e.input().type('text').tagAndId('input_myId')
+          .value(sessionStorage.getItem('myId'))
+        ),
+        e.label('Peer ID:', 
+          e.input().type('text').tagAndId('input_peerId')
+          .value(sessionStorage.getItem('peerId'))
+        ),
+        e.label('Traversal using relays around NAT:', 
+          e.input().type('checkbox').tagAndId('checkbox_turn')
+          .checked('true' == sessionStorage.getItem('checkbox_turn'))
+          .on('change', () => sessionStorage.setItem('checkbox_turn', checkbox_turn.checked))
+        )
       ).className('cleanBreak'),
-      e.button('Ready for peer connection').tagAndId('button_ready'),
-      e.button('Create chat channel').tagAndId('button_create').disabled(true),
-      e.button('Close').tagAndId('button_close').disabled(true), e.br(),
+      e.button('Ready for peer connection').tag('button_ready'),
+      e.button('Create chat channel').tag('button_create').disabled(true),
+      e.button('Close').tag('button_close').disabled(true),
     ),
     e.div().tagAndId('chat'),
     e.div(
-      e.label('Message: ', e.input().type('text').tagAndId('input_msg').autocomplete('off')),
-      e.button('Send').tagAndId('button_send').disabled(true)
+      e.label('Message:', 
+        e.input().type('text').tagAndId('input_msg').autocomplete('off')
+      ),
+      e.button('Send').tag('button_send').disabled(true)
     )
   ).id('container')
 ))
 
-const {input_myId, input_peerId, button_ready, button_create, button_close, button_send, input_msg, chat} = tags
+const {input_myId, input_peerId, button_ready, button_create, button_close, button_send, input_msg, chat, checkbox_turn} = tags
 
 wrap(button_close).on('click', () => {
   wrap(button_close).disabled(true)
@@ -43,6 +56,7 @@ wrap(button_ready).on('click', async () => {
   wrap(button_ready).disabled(true)
   wrap(input_myId).disabled(true)
   wrap(input_peerId).disabled(true)
+  wrap(checkbox_turn).disabled(true)
   myId = wrap(input_myId).value()
   peerId = wrap(input_peerId).value()
   sessionStorage.setItem('myId', myId)
@@ -77,17 +91,21 @@ let signalingClient
 let peerConnection
 /** @type {RTCDataChannel} */
 let dataChannel
-const peerConfiguration = {
+const iceConfig = {
+  iceServers: [{
+    urls: [
+      'stun:stun.l.google.com:19302',
+      'stun:stun1.l.google.com:19302',
+      'stun:stun2.l.google.com:19302',
+      'stun:stun3.l.google.com:19302',
+      'stun:stun4.l.google.com:19302',
+    ]
+  }]
+}
+// from the PeerJS project: https://github.com/peers/peerjs/blob/master/lib/util.ts
+const iceConfigWithTURN = {
   iceServers: [
-    {
-      urls: [
-        'stun:stun.l.google.com:19302',
-        'stun:stun1.l.google.com:19302',
-        'stun:stun2.l.google.com:19302',
-        'stun:stun3.l.google.com:19302',
-        'stun:stun4.l.google.com:19302',
-      ]
-    }, { // from the PeerJS project: https://github.com/peers/peerjs/blob/master/lib/util.ts
+    ...iceConfig.iceServers, {
       username: 'peerjs',
       credential: 'peerjsp',
       urls: [
@@ -113,6 +131,7 @@ function onClosed() {
   wrap(input_myId).disabled(false)
   wrap(input_peerId).disabled(false)
   wrap(button_ready).disabled(false)
+  wrap(checkbox_turn).disabled(false)
   wrap(button_create).disabled(true)
   wrap(button_close).disabled(true)
   wrap(button_send).disabled(true)
@@ -137,13 +156,15 @@ async function initPeerConnection(myId, peerId, suffix) {
   }
   // signaling server ready
   signalingClient.addEventListener('closed', () => {
-    // wrap(button_ready).disabled(false)
+    debug('signaling channel closed')
   }, {once: true})
   const signalingChannel = signalingClient.getChannel(peerId)
   const negotiator = new RTCPerfectNegotiator({
-    signalingChannel, peerConfiguration
+    peerConfiguration: (checkbox_turn.checked ? iceConfigWithTURN : iceConfig),
+    signalingChannel
   })
   peerConnection = negotiator.peerConnection
+  debug('peerConfiguration:', peerConnection.getConfiguration())
   initPeerConnectionEvents(peerConnection)
   debug('signaling channel opened')
   wrap(button_create).disabled(false)

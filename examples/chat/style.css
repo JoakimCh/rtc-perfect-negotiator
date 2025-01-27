@@ -4,17 +4,44 @@
   /* color-scheme: light; */
 }
 
+* {
+  box-sizing: border-box;
+}
+
 input, button {
   margin-right: 5px;
   margin-bottom: 5px;
 }
 
-button:enabled {
+label {
+  user-select: none;
+  display: inline-flex;
+  gap: 5px;
+  &:has(input:enabled) {
+    cursor: pointer;
+  }
+}
+
+button:enabled, input[type="checkbox"]:enabled {
   cursor: pointer;
 }
 
 html, body {
   margin: 0; height: 100%;
+}
+
+body {
+
+}
+
+h1 {
+  margin: 0;
+  margin-top: 10px;
+}
+
+.cleanBreak {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 #container {
@@ -25,30 +52,17 @@ html, body {
   min-width: min-content;
 }
 
-h1 {
-  margin: 0;
-  margin-top: 10px;
-}
-
 #chat {
-  flex: auto;
   display: flex;
   flex-direction: column;
-  /* gap: 10px; */
   border: 1px solid red;
   overflow-y: scroll;
   min-height: 10em;
   > p {
-    /* margin: 0; */
     margin: 5px;
     margin-bottom: 0;
     &:nth-child(even) {
       background-color: light-dark(rgba(0,0,0,0.1), rgba(255, 255, 255, 0.1));;
     }
   }
-}
-
-.cleanBreak {
-  display: flex;
-  flex-wrap: wrap;
 }

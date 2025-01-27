@@ -48,7 +48,7 @@ export class RTCPerfectNegotiator {
 
   /** if one or more signals did not get delivered */
   #onExpire = async () => {
-    this.stop()
+    this.stop() // also removes the onExpire callback
     this.#pc.close() // the easiest and most failsafe way to handle this
   }
 
