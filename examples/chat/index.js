@@ -117,7 +117,12 @@ const iceConfigWithTURN = {
 }
 
 function displayChatMessage(message) {
-  wrap(chat).add(e.p(message))
+  const msg = e.p(message)
+  wrap(chat).add(msg)
+  msg.scrollIntoView({
+    behavior: 'smooth',
+    inline: 'start',
+  })
 }
 
 function onChatMessage(message) {
@@ -152,7 +157,7 @@ async function initPeerConnection(myId, peerId, suffix) {
     }
   } catch (error) {
     wrap(button_ready).disabled(false)
-    throw error
+    return displayChatMessage(error)
   }
   // signaling server ready
   signalingClient.addEventListener('closed', () => {

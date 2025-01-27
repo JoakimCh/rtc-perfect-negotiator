@@ -16,6 +16,7 @@ input, button {
 label {
   user-select: none;
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 5px;
   &:has(input:enabled) {
     cursor: pointer;
@@ -56,7 +57,7 @@ h1 {
   display: flex;
   flex-direction: column;
   border: 1px solid red;
-  overflow-y: scroll;
+  overflow-y: auto;
   min-height: 10em;
   > p {
     margin: 5px;
