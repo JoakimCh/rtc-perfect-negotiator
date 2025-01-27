@@ -1,7 +1,7 @@
 
 const DEFAULT_CONFIG = {
-	iceServers: [
-		{
+  iceServers: [
+    {
       urls: [
         'stun:stun.l.google.com:19302',
         'stun:stun1.l.google.com:19302',
@@ -11,7 +11,7 @@ const DEFAULT_CONFIG = {
       ]
     }
     // find your own TURN servers if you need them
-	]
+  ]
 }
 
 /** Handling the WebRTC 'perfect negotiation' pattern. */

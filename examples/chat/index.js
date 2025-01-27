@@ -72,8 +72,8 @@ let peerConnection
 /** @type {RTCDataChannel} */
 let dataChannel
 const peerConfiguration = {
-	iceServers: [
-		{
+  iceServers: [
+    {
       urls: [
         'stun:stun.l.google.com:19302',
         'stun:stun1.l.google.com:19302',
@@ -85,11 +85,11 @@ const peerConfiguration = {
       username: 'peerjs',
       credential: 'peerjsp',
       urls: [
-				'turn:eu-0.turn.peerjs.com:3478',
-				'turn:us-0.turn.peerjs.com:3478',
-			]
-		}
-	]
+        'turn:eu-0.turn.peerjs.com:3478',
+        'turn:us-0.turn.peerjs.com:3478',
+      ]
+    }
+  ]
 }
 
 function displayChatMessage(message) {
