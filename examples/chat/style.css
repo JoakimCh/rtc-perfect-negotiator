@@ -54,7 +54,7 @@ h1 {
   flex-direction: column;
   border: 1px solid red;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth; */
   min-height: 10em;
   > p {
     margin: 5px;

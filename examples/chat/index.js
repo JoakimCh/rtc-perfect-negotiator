@@ -119,7 +119,10 @@ const iceConfigWithTURN = {
 function displayChatMessage(message) {
   const msg = e.p(message)
   wrap(chat).add(msg)
-  msg.scrollIntoView({block: 'nearest'})
+  msg.scrollIntoView({
+    block: 'nearest',
+    behavior: 'smooth'
+  })
 }
 
 function onChatMessage(message) {
