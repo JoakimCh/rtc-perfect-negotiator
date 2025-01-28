@@ -161,8 +161,9 @@ async function initPeerConnection(myId, peerId, suffix) {
     return displayChatMessage(error)
   }
   // signaling server ready
+  displayChatMessage('Signaling channel opened.')
   signalingClient.addEventListener('closed', () => {
-    debug('signaling channel closed')
+    displayChatMessage('Signaling channel closed...')
   }, {once: true})
   const signalingChannel = signalingClient.getChannel(peerId)
   const negotiator = new RTCPerfectNegotiator({
@@ -172,7 +173,6 @@ async function initPeerConnection(myId, peerId, suffix) {
   peerConnection = negotiator.peerConnection
   debug('peerConfiguration:', peerConnection.getConfiguration())
   initPeerConnectionEvents(peerConnection)
-  debug('signaling channel opened')
   button_create.disabled = false
   // negotiation is not done before a channel or track is added
 }
@@ -210,11 +210,11 @@ function initPeerConnectionEvents(peerConnection) {
           if (report.type == 'candidate-pair' && report.nominated) {
             const localCandidate = reports.get(report.localCandidateId)
             const remoteCandidate = reports.get(report.remoteCandidateId)
-            debug('local, remote:', localCandidate.candidateType, remoteCandidate.candidateType)
+            const [local, remote] = [localCandidate.candidateType, remoteCandidate.candidateType]
             if (localCandidate.candidateType == 'relay' || remoteCandidate.candidateType == 'relay') {
-              displayChatMessage('Relayed connection successful!')
+              displayChatMessage(`Relayed connection successful! (${local}, ${remote})`)
             } else {
-              displayChatMessage('Direct connection successful!')
+              displayChatMessage(`Direct connection successful! (${local}, ${remote})`)
             }
           }
         }
