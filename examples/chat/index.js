@@ -48,11 +48,12 @@ const {input_myId, input_peerId, button_ready, button_create, button_close, butt
 
 wrap(button_close).on('click', () => {
   wrap(button_close).disabled(true)
-  dataChannel.close()
+  peerConnection.close()
 })
 
 // IDs are decided and we'll wait for a connection (signaling)
 wrap(button_ready).on('click', async () => {
+  chat.replaceChildren()
   wrap(button_ready).disabled(true)
   wrap(input_myId).disabled(true)
   wrap(input_peerId).disabled(true)
@@ -204,7 +205,20 @@ function initPeerConnectionEvents(peerConnection) {
       debug('data channel opened')
       hasBeenOpen = true
       clearTimeout(openTimeout)
-      displayChatMessage(peerId+' has entered the chat.')
+      peerConnection.getStats().then(reports => {
+        for (const [id, report] of reports) {
+          if (report.type == 'candidate-pair' && report.nominated) {
+            const localCandidate = reports.get(report.localCandidateId)
+            const remoteCandidate = reports.get(report.remoteCandidateId)
+            debug('local, remote:', localCandidate.candidateType, remoteCandidate.candidateType)
+            if (localCandidate.candidateType == 'relay' || remoteCandidate.candidateType == 'relay') {
+              displayChatMessage('Relayed connection successful!')
+            } else {
+              displayChatMessage('Direct connection successful!')
+            }
+          }
+        }
+      })
       wrap(input_msg).focus()
       wrap(button_send).disabled(false)
       wrap(button_close).disabled(false)
@@ -219,7 +233,8 @@ function initPeerConnectionEvents(peerConnection) {
       clearTimeout(openTimeout)
       clearTimeout(closeTimeout)
       if (hasBeenOpen) {
-        displayChatMessage(peerId+' has left the chat.')
+        displayChatMessage('Connection closed...')
+        // displayChatMessage(peerId+' has left the chat.')
       } else {
         displayChatMessage(`Unable to connect to: ${peerId}...`)
       }
