@@ -24,11 +24,11 @@ document.body.append(...unwrap(
           e.input().type('text').tagAndId('input_peerId')
           .value(sessionStorage.getItem('peerId'))
         ),
-        e.label('Traversal using relays around NAT:', 
+        e.label('Allow using relays around NAT:', 
           e.input().type('checkbox').tagAndId('checkbox_turn')
           .checked('true' == sessionStorage.getItem('checkbox_turn'))
           .on('change', () => sessionStorage.setItem('checkbox_turn', checkbox_turn.checked))
-        )
+        ).title('configures a TURN server')
       ).className('cleanBreak'),
       e.button('Ready for peer connection').tag('button_ready'),
       e.button('Create chat channel').tag('button_create').disabled(true),
@@ -46,42 +46,42 @@ document.body.append(...unwrap(
 
 const {input_myId, input_peerId, button_ready, button_create, button_close, button_send, input_msg, chat, checkbox_turn} = tags
 
-wrap(button_close).on('click', () => {
-  wrap(button_close).disabled(true)
+button_close.onclick = () => {
+  button_close.disabled = true
   peerConnection.close()
-})
+}
 
 // IDs are decided and we'll wait for a connection (signaling)
-wrap(button_ready).on('click', async () => {
+button_ready.onclick = async () => {
   chat.replaceChildren()
-  wrap(button_ready).disabled(true)
-  wrap(input_myId).disabled(true)
-  wrap(input_peerId).disabled(true)
-  wrap(checkbox_turn).disabled(true)
-  myId = wrap(input_myId).value()
-  peerId = wrap(input_peerId).value()
+  button_ready.disabled = true
+  input_myId.disabled = true
+  input_peerId.disabled = true
+  checkbox_turn.disabled = true
+  myId = input_myId.value
+  peerId = input_peerId.value
   sessionStorage.setItem('myId', myId)
   sessionStorage.setItem('peerId', peerId)
   initPeerConnection(myId, peerId, idSuffix)
-})
+}
 
-wrap(button_create).on('click', async () => {
+button_create.onclick = async () => {
   const channel = peerConnection.createDataChannel('chat')
   peerConnection.ondatachannel({channel}) // must trigger it manually then
-})
+}
 
-wrap(button_send).on('click', () => {
-  const message = wrap(input_msg).value()
+button_send.onclick = () => {
+  const message = input_msg.value
   dataChannel.send(message)
-  wrap(input_msg).value('').focus()
+  wrap(input_msg).value('').focus() // (when wrapped we can use chaining)
   displayChatMessage(myId+': '+message)
-})
+}
 
-wrap(input_msg).on('keydown', ({key}) => {
+input_msg.onkeydown = ({key}) => {
   if (key == 'Enter') {
     button_send.click()
   }
-})
+}
 
 globalThis['DEBUG_SIGNALING'] = true
 const idSuffix = '-jlcRtcTest'
@@ -119,7 +119,7 @@ const iceConfigWithTURN = {
 
 function displayChatMessage(message) {
   const msg = e.p(message)
-  wrap(chat).add(msg)
+  chat.append(msg.element)
   msg.scrollIntoView({
     block: 'nearest',
     behavior: 'smooth'
@@ -134,13 +134,13 @@ function onChatMessage(message) {
 function onClosed() {
   debug('connection closed')
   // reset all buttons
-  wrap(input_myId).disabled(false)
-  wrap(input_peerId).disabled(false)
-  wrap(button_ready).disabled(false)
-  wrap(checkbox_turn).disabled(false)
-  wrap(button_create).disabled(true)
-  wrap(button_close).disabled(true)
-  wrap(button_send).disabled(true)
+  input_myId.disabled = false
+  input_peerId.disabled = false
+  button_ready.disabled = false
+  checkbox_turn.disabled = false
+  button_create.disabled = true
+  button_close.disabled = true
+  button_send.disabled = true
 }
 
 async function initPeerConnection(myId, peerId, suffix) {
@@ -157,7 +157,7 @@ async function initPeerConnection(myId, peerId, suffix) {
       await signalingClient.createReadyPromise()
     }
   } catch (error) {
-    wrap(button_ready).disabled(false)
+    button_ready.disabled = false
     return displayChatMessage(error)
   }
   // signaling server ready
@@ -173,7 +173,7 @@ async function initPeerConnection(myId, peerId, suffix) {
   debug('peerConfiguration:', peerConnection.getConfiguration())
   initPeerConnectionEvents(peerConnection)
   debug('signaling channel opened')
-  wrap(button_create).disabled(false)
+  button_create.disabled = false
   // negotiation is not done before a channel or track is added
 }
 
@@ -184,7 +184,7 @@ function initPeerConnectionEvents(peerConnection) {
   peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'
     debug('new data channel:', channel.label, peerConnection.connectionState, peerConnection.signalingState)
     dataChannel = channel
-    wrap(button_create).disabled(true)
+    button_create.disabled = true
     let closeTimeout, hasBeenOpen
     const openTimeout = setTimeout(() => {
       debug('data channel open timeout', peerConnection.connectionState, peerConnection.signalingState)
@@ -219,14 +219,13 @@ function initPeerConnectionEvents(peerConnection) {
           }
         }
       })
-      wrap(input_msg).focus()
-      wrap(button_send).disabled(false)
-      wrap(button_close).disabled(false)
+      input_msg.focus()
+      button_send.disabled = false
+      button_close.disabled = false
     }
     channel.onerror = ({error}) => {
       // this will happen if other side e.g. refresh the tab
       debug('data channel error:', error)
-      debug(error)
     }
     channel.onclose = () => {
       debug('data channel closed:', peerConnection.connectionState, peerConnection.signalingState)
