@@ -172,20 +172,22 @@ async function initPeerConnection(myId, peerId, suffix) {
     }
   } else { // we only create one client (which can reconnect when needed)
     signalingClient = new PeerServerSignalingClient({myId})
+    signalingClient.addEventListener('connecting', () => {
+      displayChatMessage('Signaling channel connecting...')})
     signalingClient.addEventListener('ready', () => {
       displayChatMessage('Signaling channel ready.')})
-    signalingClient.addEventListener('closed', () => {
-      displayChatMessage('Signaling channel closed.')})
+    signalingClient.addEventListener('closed', ({detail: {willRetry}}) => {
+      displayChatMessage(`Signaling channel closed, willRetry: ${willRetry}`)})
     signalingClient.addEventListener('error', ({detail: {message, code}}) => {
-      displayChatMessage(`Signaling channel error ${code}: ${message}`)})
+      displayChatMessage(`Signaling channel error: ${code} ${message}`)})
   }
   try {
     if (!signalingClient.ready) {
       await signalingClient.createReadyPromise()
     }
   } catch (error) {
-    button_ready.disabled = false
-    return displayChatMessage(error)
+    // (already displayed by the "error" event)
+    return button_ready.disabled = false
   }
   // signaling server ready
   const signalingChannel = signalingClient.getChannel(peerId)
