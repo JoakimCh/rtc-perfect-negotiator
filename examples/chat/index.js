@@ -172,8 +172,8 @@ async function initPeerConnection(myId, peerId, suffix) {
     }
   } else { // we only create one client (which can reconnect when needed)
     signalingClient = new PeerServerSignalingClient({myId})
-    signalingClient.addEventListener('connecting', () => {
-      displayChatMessage('Signaling channel connecting...')})
+    signalingClient.addEventListener('connecting', ({detail: connectionAttempt, lastAttempt}) => {
+      displayChatMessage(`Signaling channel connecting... ${connectionAttempt}/${signalingClient.maxConnectionAttempts}`)})
     signalingClient.addEventListener('ready', () => {
       displayChatMessage('Signaling channel ready.')})
     signalingClient.addEventListener('closed', ({detail: {willRetry}}) => {
