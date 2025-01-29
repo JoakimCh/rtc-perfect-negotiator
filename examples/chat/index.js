@@ -53,6 +53,20 @@ document.body.append(...unwrap(
 
 const {input_myId, input_peerId, button_ready, button_create, button_close, button_send, input_msg, chat, checkbox_turn} = tags
 
+// debug = () => {} // to disable debug
+/** If enabled debugs to chat, else debug() */
+function debugToChat(message) {
+  // debug(message)
+  displayChatMessage(message)
+}
+
+window.addEventListener('offline', () => {
+  debugToChat('Network connection offline.')
+})
+window.addEventListener('online', () => {
+  debugToChat('Network connection online.')
+})
+
 button_close.onclick = () => {
   button_close.disabled = true
   peerConnection.close()
@@ -154,10 +168,14 @@ async function initPeerConnection(myId, peerId, suffix) {
   myId += suffix; peerId += suffix
   if (signalingClient) {
     if (!(signalingClient.ready && signalingClient.myId == myId)) {
-      signalingClient.reconnect(myId)
+      signalingClient.reconnect(myId) // if closed or reconnecting with a new ID
     }
-  } else {
+  } else { // we only create one client (which can reconnect when needed)
     signalingClient = new PeerServerSignalingClient({myId})
+    signalingClient.addEventListener('ready', () => {
+      displayChatMessage('Signaling channel ready.')})
+    signalingClient.addEventListener('closed', () => {
+      displayChatMessage('Signaling channel closed.')})
   }
   try {
     if (!signalingClient.ready) {
@@ -168,10 +186,6 @@ async function initPeerConnection(myId, peerId, suffix) {
     return displayChatMessage(error)
   }
   // signaling server ready
-  displayChatMessage('Signaling channel opened.')
-  signalingClient.addEventListener('closed', () => {
-    displayChatMessage('Signaling channel closed...')
-  }, {once: true})
   const signalingChannel = signalingClient.getChannel(peerId)
   const negotiator = new RTCPerfectNegotiator({
     peerConfiguration: (checkbox_turn.checked ? iceConfigWithTURN : iceConfig),

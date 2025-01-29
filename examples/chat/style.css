@@ -43,6 +43,7 @@ h1 {
 
 #container {
   display: flex;
+  margin: 5px;
   flex-direction: column;
   height: 100%;
   /* prevents a bug where it can become smaller than content: */
