@@ -176,7 +176,7 @@ async function initPeerConnection(myId, peerId, suffix) {
       displayChatMessage('Signaling channel ready.')})
     signalingClient.addEventListener('closed', () => {
       displayChatMessage('Signaling channel closed.')})
-    signalingClient.addEventListener('error', ({message, code}) => {
+    signalingClient.addEventListener('error', ({detail: {message, code}}) => {
       displayChatMessage(`Signaling channel error ${code}: ${message}`)})
   }
   try {
