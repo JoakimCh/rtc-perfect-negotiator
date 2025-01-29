@@ -186,7 +186,9 @@ async function initPeerConnection(myId, peerId, suffix) {
       await signalingClient.createReadyPromise()
     }
   } catch (error) {
-    // (already displayed by the "error" event)
+    if (error.code == 'SIGNALING_SERVER_TIMEOUT') {
+      displayChatMessage(`Signaling channel error: ${code} ${message}`)
+    }
     return button_ready.disabled = false
   }
   // signaling server ready
