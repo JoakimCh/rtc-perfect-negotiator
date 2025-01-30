@@ -217,6 +217,12 @@ async function initPeerConnection(myId, peerId, suffix) {
  * @param {RTCPeerConnection} peerConnection 
  */
 function initPeerConnectionEvents(peerConnection) {
+  peerConnection.onicecandidate(({candidate}) => {
+    if (candidate) debugToChat('[ice candidate]')
+  })
+  peerConnection.onnegotiationneeded(() => {
+    debugToChat('[negotiation needed]')
+  })
   peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'
     debug('new data channel:', channel.label, peerConnection.connectionState, peerConnection.signalingState)
     dataChannel = channel
