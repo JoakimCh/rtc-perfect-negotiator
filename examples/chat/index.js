@@ -13,13 +13,13 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version hash: ', 
-      e.span('loading...').onceAdded(self => {
-        fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
-        .then(response => response.json())
-        .then(data => self.text(data.sha.substring(0, 7)))
-        .catch(error => self.text('error loading...'))
-      })
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.1', 
+      // e.span('loading...').onceAdded(self => {
+      //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
+      //   .then(response => response.json())
+      //   .then(data => self.text(data.sha.substring(0, 7)))
+      //   .catch(error => self.text('error loading...'))
+      // })
     ),
     e.div(
       e.div(
