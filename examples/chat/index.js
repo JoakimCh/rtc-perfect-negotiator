@@ -55,9 +55,9 @@ const {input_myId, input_peerId, button_ready, button_create, button_close, butt
 
 // debug = () => {} // to disable debug
 /** If enabled debugs to chat, else debug() */
-function debugToChat(message) {
-  // debug(message)
-  displayChatMessage(message)
+function debugToChat(...messages) {
+  // debug(...message)
+  displayChatMessage(messages.join(' '))
 }
 
 window.addEventListener('offline', () => {
@@ -224,7 +224,7 @@ function initPeerConnectionEvents(peerConnection) {
     debugToChat('[negotiation needed]')
   })
   peerConnection.oniceconnectionstatechange = async () => {
-    debugToChat('ICE connection state: ', peerConnection.iceConnectionState)
+    debugToChat('ICE connection state:', peerConnection.iceConnectionState)
     if (peerConnection.iceConnectionState == 'disconnected' ||
         peerConnection.iceConnectionState == 'failed') {
       debugToChat('Restarting ICE...')
