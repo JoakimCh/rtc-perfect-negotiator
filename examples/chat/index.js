@@ -10,7 +10,7 @@ pageSetup({
   favicon: false // set to a blank one
 })
 
-document.body.append(...unwrap( 
+document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
     e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version hash: ', 
