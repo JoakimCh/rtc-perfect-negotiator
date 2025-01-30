@@ -57,16 +57,31 @@ export class RTCPerfectNegotiator {
     this.#signalingChannel.send(candidate)
   }
 
-  #onNegotiationNeeded = async () => {
+  #onNegotiationNeeded = () => {
+    this.#makeOffer()
+  }
+
+  // if undefined it creates one for us
+  async #makeOffer(offer) {
     try {
       this.#makingOffer = true
-      await this.#pc.setLocalDescription() // create offer
+      await this.#pc.setLocalDescription(offer) // create offer
       this.#signalingChannel.send(this.#pc.localDescription)
     } catch (error) {
       console.error('Error making offer:', error)
     } finally {
       this.#makingOffer = false
     }
+  }
+
+  // only one side should do this I guess?
+  async restartIce() {
+    this.#makeOffer({iceRestart: true})
+    // const restartOffer = await peerConnection.createOffer({iceRestart: true})
+    // await peerConnection.setLocalDescription(restartOffer)
+    // signalingChannel.send(restartOffer)
+    // await peerConnection.setLocalDescription({iceRestart: true})
+    // signalingChannel.send(peerConnection.localDescription)
   }
 
   // copy of https://w3c.github.io/webrtc-pc/#perfect-negotiation-example

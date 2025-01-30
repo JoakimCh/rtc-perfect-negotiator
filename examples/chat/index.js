@@ -112,7 +112,7 @@ globalThis['DEBUG_SIGNALING'] = true
 const idSuffix = '-jlcRtcTest'
 let myId, peerId
 /** @type {PeerServerSignalingClient} */
-let signalingClient, signalingChannel
+let signalingClient, signalingChannel, negotiator
 /** @type {RTCPeerConnection} */
 let peerConnection
 /** @type {RTCDataChannel} */
@@ -202,7 +202,7 @@ async function initPeerConnection(myId, peerId, suffix) {
   }
   // signaling server ready
   signalingChannel = signalingClient.getChannel(peerId)
-  const negotiator = new RTCPerfectNegotiator({
+  negotiator = new RTCPerfectNegotiator({
     peerConfiguration: (checkbox_turn.checked ? iceConfigWithTURN : iceConfig),
     signalingChannel
   })
@@ -225,12 +225,11 @@ function initPeerConnectionEvents(peerConnection) {
   })
   peerConnection.oniceconnectionstatechange = async () => {
     debugToChat('ICE connection state:', peerConnection.iceConnectionState)
-    if (peerConnection.iceConnectionState == 'disconnected' ||
-        peerConnection.iceConnectionState == 'failed') {
+    // if (peerConnection.iceConnectionState == 'disconnected' ||
+    //     peerConnection.iceConnectionState == 'failed') {
+    if (peerConnection.iceConnectionState == 'failed') {
       debugToChat('Restarting ICE...')
-      // peerConnection.createOffer({ iceRestart: true })
-      await peerConnection.setLocalDescription({iceRestart: true})
-      signalingChannel.send(peerConnection.localDescription)
+      negotiator.restartIce()
     }
   }
 
