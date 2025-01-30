@@ -217,10 +217,10 @@ async function initPeerConnection(myId, peerId, suffix) {
  * @param {RTCPeerConnection} peerConnection 
  */
 function initPeerConnectionEvents(peerConnection) {
-  peerConnection.onicecandidate(({candidate}) => {
+  peerConnection.addEventListener('icecandidate', ({candidate}) => {
     if (candidate) debugToChat('[ice candidate]')
   })
-  peerConnection.onnegotiationneeded(() => {
+  peerConnection.addEventListener('negotiationneeded', () => {
     debugToChat('[negotiation needed]')
   })
   peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'
