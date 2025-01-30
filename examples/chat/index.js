@@ -74,13 +74,17 @@ button_close.onclick = () => {
 
 // IDs are decided and we'll wait for a connection (signaling)
 button_ready.onclick = async () => {
-  chat.replaceChildren()
+  chat.replaceChildren() // clear chat
+  myId = input_myId.value
+  peerId = input_peerId.value
+  if (!myId || !peerId) {
+    displayChatMessage('Please fill out "my ID" and "peer ID"!')
+    return
+  }
   button_ready.disabled = true
   input_myId.disabled = true
   input_peerId.disabled = true
   checkbox_turn.disabled = true
-  myId = input_myId.value
-  peerId = input_peerId.value
   sessionStorage.setItem('myId', myId)
   sessionStorage.setItem('peerId', peerId)
   initPeerConnection(myId, peerId, idSuffix)
@@ -184,12 +188,17 @@ async function initPeerConnection(myId, peerId, suffix) {
   try {
     if (!signalingClient.ready) {
       await signalingClient.createReadyPromise()
+    } else {
+      displayChatMessage('Signaling channel ready.')
     }
   } catch (error) {
     if (error.code == 'SIGNALING_SERVER_TIMEOUT') {
-      displayChatMessage(`Signaling channel error: ${code} ${message}`)
+      displayChatMessage(`Signaling channel connection timeout.`)
     }
-    return button_ready.disabled = false
+    input_myId.disabled = false
+    input_peerId.disabled = false
+    button_ready.disabled = false
+    return
   }
   // signaling server ready
   const signalingChannel = signalingClient.getChannel(peerId)
