@@ -217,19 +217,19 @@ async function initPeerConnection(myId, peerId, suffix) {
  * @param {RTCPeerConnection} peerConnection 
  */
 function initPeerConnectionEvents(peerConnection) {
-  peerConnection.addEventListener('icecandidate', ({candidate}) => {
-    if (candidate) debugToChat('[ice candidate]')
-  })
+  // peerConnection.addEventListener('icecandidate', ({candidate}) => {
+  //   if (candidate) debugToChat('[ICE candidate]')
+  // })
   peerConnection.addEventListener('negotiationneeded', () => {
     debugToChat('[negotiation needed]')
   })
   peerConnection.oniceconnectionstatechange = async () => {
-    debugToChat('ICE connection state:', peerConnection.iceConnectionState)
-    if (peerConnection.iceConnectionState == 'disconnected' 
-    ||  peerConnection.iceConnectionState == 'failed') {
-      debugToChat('Restarting ICE...')
-      negotiator.restartIce()
-    }
+    debugToChat('ICE connection change:', peerConnection.iceConnectionState)
+    // if (peerConnection.iceConnectionState == 'disconnected' 
+    // ||  peerConnection.iceConnectionState == 'failed') {
+    //   debugToChat('Restarting ICE...')
+    //   negotiator.restartIce()
+    // }
   }
 
   peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'
