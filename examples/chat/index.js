@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.1', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.2', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -225,9 +225,8 @@ function initPeerConnectionEvents(peerConnection) {
   })
   peerConnection.oniceconnectionstatechange = async () => {
     debugToChat('ICE connection state:', peerConnection.iceConnectionState)
-    // if (peerConnection.iceConnectionState == 'disconnected' ||
-    //     peerConnection.iceConnectionState == 'failed') {
-    if (peerConnection.iceConnectionState == 'failed') {
+    if (peerConnection.iceConnectionState == 'disconnected' 
+    ||  peerConnection.iceConnectionState == 'failed') {
       debugToChat('Restarting ICE...')
       negotiator.restartIce()
     }
