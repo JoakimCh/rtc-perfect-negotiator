@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.7', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.8', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -110,9 +110,11 @@ input_msg.onkeydown = ({key}) => {
 
 globalThis['DEBUG_SIGNALING'] = true
 const idSuffix = '-jlcRtcTest'
-let myId, peerId
+let myId, peerId, signalingChannel
 /** @type {PeerServerSignalingClient} */
-let signalingClient, signalingChannel, negotiator
+let signalingClient
+/** @type {RTCPerfectNegotiator} */
+let negotiator
 /** @type {RTCPeerConnection} */
 let peerConnection
 /** @type {RTCDataChannel} */
@@ -179,7 +181,7 @@ async function initPeerConnection(myId, peerId, suffix) {
     signalingClient.addEventListener('connecting', ({detail: {connectionAttempt, lastAttempt}}) => {
       displayChatMessage(`Signaling channel connecting... ${connectionAttempt}/${signalingClient.maxConnectionAttempts}`)})
     signalingClient.addEventListener('ready', () => {
-      displayChatMessage('Signaling channel ready.')})
+      displayChatMessage(`Signaling channel ready.`)})
     signalingClient.addEventListener('closed', ({detail: {willRetry}}) => {
       displayChatMessage(`Signaling channel closed, willRetry: ${willRetry}`)})
     signalingClient.addEventListener('error', ({detail: {message, code}}) => {
@@ -206,6 +208,7 @@ async function initPeerConnection(myId, peerId, suffix) {
     peerConfiguration: (checkbox_turn.checked ? iceConfigWithTURN : iceConfig),
     signalingChannel
   })
+  displayChatMessage(`Negotiator isPolite = ${negotiator.isPolite}`)
   negotiator.addEventListener('error', ({detail: {message, code}}) => {
     debugToChat(`error: ${code} ${message}`)})
   peerConnection = negotiator.peerConnection
