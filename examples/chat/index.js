@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.5', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.6', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -206,6 +206,8 @@ async function initPeerConnection(myId, peerId, suffix) {
     peerConfiguration: (checkbox_turn.checked ? iceConfigWithTURN : iceConfig),
     signalingChannel
   })
+  negotiator.addEventListener('error', ({detail: {message, code}}) => {
+    debugToChat(`error: ${code} ${message}`)})
   peerConnection = negotiator.peerConnection
   debug('peerConfiguration:', peerConnection.getConfiguration())
   initPeerConnectionEvents(peerConnection)
@@ -220,16 +222,14 @@ function initPeerConnectionEvents(peerConnection) {
   // peerConnection.addEventListener('icecandidate', ({candidate}) => {
   //   if (candidate) debugToChat('[ICE candidate]')
   // })
+  peerConnection.onsignalingstatechange = async () => {
+    debug('signaling state change:', peerConnection.signalingState)
+  }
   peerConnection.addEventListener('negotiationneeded', () => {
     debugToChat('[negotiation needed]')
   })
   peerConnection.oniceconnectionstatechange = async () => {
     debugToChat('ICE connection change:', peerConnection.iceConnectionState)
-    // if (peerConnection.iceConnectionState == 'disconnected' 
-    // ||  peerConnection.iceConnectionState == 'failed') {
-    //   debugToChat('Restarting ICE...')
-    //   negotiator.restartIce()
-    // }
   }
 
   peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'
