@@ -70,7 +70,14 @@ export class RTCPerfectNegotiator extends EventTarget {
 
   /** This is done automatically on 'iceConnectionState' == 'disconnected'. */
   async restartIce() {
-    this.#makeOffer({iceRestart: true})
+    if (this.#pc.signalingState == 'stable') {
+      this.#makeOffer({iceRestart: true})
+    } else {
+      this.#emitError({
+        code: 'NEGOTIATION_LOCAL_ICE_RESTART_BLOCKED',
+        message: 'signalingState not stable'
+      })
+    }
   }
 
   #onIceConnectionStateChange = () => {
@@ -115,8 +122,8 @@ export class RTCPerfectNegotiator extends EventTarget {
   }
 
   /** Attempt to resend the signals related to the offer or answer if the connection doesn't go to stable. */
-  #beginResendTimer() {
-    this.#resendAttempt = 0
+  #beginResendTimer(resetCount = true) {
+    if (resetCount) this.#resendAttempt = 0
     this.#resendTimer = setTimeout(this.#onResendTimer, this.#retryTimeout)
   }
 
@@ -134,15 +141,16 @@ export class RTCPerfectNegotiator extends EventTarget {
       case 'have-local-offer':    // a pending offer has not been answered
       case 'have-local-pranswer': // our answer has not been applied (from what we can infer)
         if (this.#resendAttempt < this.#maxRetries) {
+          this.#beginResendTimer(false) // restart timer, but keep the count
           this.#resendCachedSignals()
           this.#emitError({
             code: 'NEGOTIATION_SIGNAL_RESEND',
             message: 'Resending signals since not yet stable.'
           })
         } else { // max attempt reached
-          this.#clearResendTimer()
           // then roll back our offer or answer and pray...
           this.#pc.setLocalDescription({type: 'rollback'})
+          this.#outgoingSignalCache.clear() // and clear the discarded signals
           this.#emitError({
             code: 'NEGOTIATION_FAILURE',
             message: 'Max signal resend reached, rolling back our offer or answer; hoping for a miracle...'
@@ -153,27 +161,25 @@ export class RTCPerfectNegotiator extends EventTarget {
   }
 
   async #makeOffer({iceRestart} = {}) {
-    if (this.#creatingOffer || this.#pc.signalingState == 'have-local-offer') {
-      this.#emitError({
-        code: 'NEGOTIATION_DUPLICATE_OFFER',
-        message: 'Tried creating another offer before getting an answer.'
+    if (this.#creatingOffer || this.#pc.signalingState != 'stable') {
+      return this.#emitError({
+        code: 'NEGOTIATION_OFFER_OUT_OF_TURN',
+        message: 'Tried creating an offer when signalingState not stable.'
       })
-      return // this should not really happen though
     }
     try {
-      // let offer // undefined == create and apply a normal offer
+      let offer // undefined == create and apply a normal offer
       this.#creatingOffer = true
-      // if (iceRestart) {
-      //   offer = await this.#pc.createOffer({iceRestart: true})
-      // }
-      // await this.#pc.setLocalDescription(offer) // apply offer (have-local-offer)
-      await this.#pc.setLocalDescription(iceRestart ? {iceRestart: true} : undefined)
+      if (iceRestart) {
+        offer = await this.#pc.createOffer({iceRestart: true})
+      }
+      await this.#pc.setLocalDescription(offer) // apply offer (have-local-offer)
       if (this.#pc.signalingState != 'have-local-offer') {
         throw Error(`signalingState != 'have-local-offer'`)
       }
       // if we got here it means no error during creation
       this.#beginResendTimer() // so we can rollback if no answer received
-      this.#sendSignal(this.#pc.localDescription) // offer || this.#pc.localDescription
+      this.#sendSignal(offer || this.#pc.localDescription)
     } catch (error) {
       this.#emitError({
         code: 'NEGOTIATION_OFFER_ERROR',
