@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.9', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.10', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -23,13 +23,15 @@ document.body.append(...unwrap(
     ),
     e.div(
       e.div(
-        e.label('My ID:', 
+        e.label('My ID:',
           e.input().type('text').tagAndId('input_myId')
           .value(sessionStorage.getItem('myId'))
+          .autocapitalize('none')
         ),
         e.label('Peer ID:', 
           e.input().type('text').tagAndId('input_peerId')
           .value(sessionStorage.getItem('peerId'))
+          .autocapitalize('none')
         ),
         e.label('Allow using relays around NAT:', 
           e.input().type('checkbox').tagAndId('checkbox_turn')

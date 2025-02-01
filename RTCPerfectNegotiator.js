@@ -80,10 +80,22 @@ export class RTCPerfectNegotiator extends EventTarget {
     }
   }
 
+  #iceRestartTimer
+
   #onIceConnectionStateChange = () => {
     if (this.#pc.iceConnectionState == 'disconnected' 
     ||  this.#pc.iceConnectionState == 'failed') {
-      this.restartIce()
+      // try avoiding both attempting a restart at the same time
+      if (!this.#isPolite) {
+        this.restartIce()
+      } else {
+        this.#iceRestartTimer = setTimeout(() => {
+          if (this.#pc.iceConnectionState == 'disconnected' 
+          ||  this.#pc.iceConnectionState == 'failed') {
+            this.restartIce()
+          }
+        }, 2000)
+      }
     }
   }
 
@@ -190,7 +202,7 @@ export class RTCPerfectNegotiator extends EventTarget {
       this.#creatingOffer = false
     }
   }
-
+  #settingAnswerPending
   // Loosely inspired by https://w3c.github.io/webrtc-pc/#perfect-negotiation-example
   #onSignal = async ({description, candidate}) => {
     if (this.#pc.signalingState == 'closed') {
@@ -209,15 +221,21 @@ export class RTCPerfectNegotiator extends EventTarget {
         }
         switch (description.type) {
           case 'offer': { // received offer
-            const hasOwnOffer = this.#creatingOffer || this.#pc.signalingState == 'have-local-offer'
-            if (!hasOwnOffer || this.#isPolite) {
-              this.#clearResendTimer() // since our offer will be rolled back
+            if (this.#iceRestartTimer) { // then skip sending our own ice restart offer
+              clearTimeout(this.#iceRestartTimer)
+            }
+            const readyForOffer = !this.#creatingOffer && (this.#pc.signalingState == 'stable' || this.#settingAnswerPending)
+            // const hasOwnOffer = this.#creatingOffer || this.#pc.signalingState == 'have-local-offer'
+            if (readyForOffer || this.#isPolite) { // (!hasOwnOffer || this.#isPolite) 
+              this.#clearResendTimer() // in case our offer will be rolled back
+              this.#settingAnswerPending = true
               await this.#pc.setRemoteDescription(description) // rolls back own offer if needed (have-remote-offer)
+              this.#settingAnswerPending = false
               await this.#pc.setLocalDescription() // creates an answer (have-local-pranswer)
               this.#beginResendTimer() // to check that our answer is applied and takes us to 'stable'
               this.#sendSignal(this.#pc.localDescription) // send answer
             } else {
-              // we ignore the incoming offer because we sent one and we're not the polite peer
+              // we ignore the incoming offer because we're not the polite peer
             }
           } return
           case 'answer': // received answer
