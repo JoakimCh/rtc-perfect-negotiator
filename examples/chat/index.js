@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.11', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.13', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -224,17 +224,14 @@ async function initPeerConnection(myId, peerId, suffix) {
  * @param {RTCPeerConnection} peerConnection 
  */
 function initPeerConnectionEvents(peerConnection) {
-  // peerConnection.addEventListener('icecandidate', ({candidate}) => {
-  //   if (candidate) debugToChat('[ICE candidate]')
-  // })
-  peerConnection.onsignalingstatechange = async () => {
-    debug('## signaling state change ##', peerConnection.signalingState)
-  }
   peerConnection.addEventListener('negotiationneeded', () => {
     debugToChat('[negotiation needed]')
   })
+  peerConnection.onsignalingstatechange = async () => {
+    debugToChat('## signaling state ##', peerConnection.signalingState)
+  }
   peerConnection.oniceconnectionstatechange = async () => {
-    debugToChat('ICE connection change:', peerConnection.iceConnectionState)
+    debugToChat('## ICE connection ##', peerConnection.iceConnectionState)
   }
 
   peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'

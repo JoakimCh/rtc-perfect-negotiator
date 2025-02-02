@@ -54,25 +54,29 @@ export class RTCPerfectNegotiator extends EventTarget {
 
   #start() {
     this.#signalingChannel.onSignal = this.#onSignal
-    window.addEventListener('online', this.#onNavigatorOnline)
     this.#pc.addEventListener('icecandidate', this.#onIceCandidate)
     this.#pc.addEventListener('negotiationneeded', this.#onNegotiationNeeded)
     this.#pc.addEventListener('signalingstatechange', this.#onSignalingStateChange)
     this.#pc.addEventListener('iceconnectionstatechange', this.#onIceConnectionStateChange)
+    document.addEventListener('visibilitychange', this.#onNavigatorOnlineAndVisibilityChange)
+    window.addEventListener('online', this.#onNavigatorOnlineAndVisibilityChange)
   }
 
   /** Stop it from handling negotiation. */
   stop() {
     this.#signalingChannel.onSignal = undefined
-    window.removeEventListener('online', this.#onNavigatorOnline)
     this.#pc.removeEventListener('icecandidate', this.#onIceCandidate)
     this.#pc.removeEventListener('negotiationneeded', this.#onNegotiationNeeded)
     this.#pc.removeEventListener('signalingstatechange', this.#onSignalingStateChange)
     this.#pc.removeEventListener('iceconnectionstatechange', this.#onIceConnectionStateChange)
+    document.removeEventListener('visibilitychange', this.#onNavigatorOnlineAndVisibilityChange)
+    window.removeEventListener('online', this.#onNavigatorOnlineAndVisibilityChange)
   }
 
-  #onNavigatorOnline = () => {
-    if (this.#pc.iceConnectionState == 'failed' && this.#pc.signalingState != 'closed') {
+  #onNavigatorOnlineAndVisibilityChange = () => {
+    if (document.hidden) return
+    if (this.#resendAttempt == this.#maxRetries // e.g. it gave up
+    || (this.#pc.iceConnectionState == 'failed' && this.#pc.signalingState != 'closed')) {
       this.restartIce()
     }
   }
@@ -163,19 +167,19 @@ export class RTCPerfectNegotiator extends EventTarget {
       case 'have-local-offer':    // a pending offer has not been answered
       case 'have-local-pranswer': // our answer has not been applied (from what we can infer)
         if (this.#resendAttempt < this.#maxRetries) {
-          this.#beginResendTimer(false) // only restart timer (no reset)
-          this.#resendCachedSignals()
           this.#emitError({
             code: 'NEGOTIATION_SIGNAL_RESEND',
             message: 'Resending signals since not yet stable.'
           })
+          this.#beginResendTimer(false) // only restart timer (no reset)
+          this.#resendCachedSignals()
         } else { // max attempt reached
           // then roll back our offer or answer and pray...
-          this.#pc.setLocalDescription({type: 'rollback'})
           this.#emitError({
             code: 'NEGOTIATION_FAILURE',
             message: 'Max signal resend reached, rolling back our offer or answer; hoping for a miracle...'
           })
+          this.#pc.setLocalDescription({type: 'rollback'})
         }
       return
     }
