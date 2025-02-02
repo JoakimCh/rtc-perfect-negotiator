@@ -31,6 +31,7 @@ export class RTCPerfectNegotiator extends EventTarget {
   #creatingOffer; #resendTimer; #resendAttempt; #maxRetries; #retryTimeout
   /** Done in case we detect that the peer has not received them, so we can resend them. */
   #outgoingSignalCache = new Set()
+  #settingAnswerPending; #iceRestartTimer
 
   get peerConnection() {return this.#pc}
   get isPolite() {return this.#isPolite}
@@ -53,6 +54,7 @@ export class RTCPerfectNegotiator extends EventTarget {
 
   #start() {
     this.#signalingChannel.onSignal = this.#onSignal
+    window.addEventListener('online', this.#onNavigatorOnline)
     this.#pc.addEventListener('icecandidate', this.#onIceCandidate)
     this.#pc.addEventListener('negotiationneeded', this.#onNegotiationNeeded)
     this.#pc.addEventListener('signalingstatechange', this.#onSignalingStateChange)
@@ -62,10 +64,17 @@ export class RTCPerfectNegotiator extends EventTarget {
   /** Stop it from handling negotiation. */
   stop() {
     this.#signalingChannel.onSignal = undefined
+    window.removeEventListener('online', this.#onNavigatorOnline)
     this.#pc.removeEventListener('icecandidate', this.#onIceCandidate)
     this.#pc.removeEventListener('negotiationneeded', this.#onNegotiationNeeded)
     this.#pc.removeEventListener('signalingstatechange', this.#onSignalingStateChange)
     this.#pc.removeEventListener('iceconnectionstatechange', this.#onIceConnectionStateChange)
+  }
+
+  #onNavigatorOnline = () => {
+    if (this.#pc.iceConnectionState == 'failed' && this.#pc.signalingState != 'closed') {
+      this.restartIce()
+    }
   }
 
   /** This is done automatically on 'iceConnectionState' == 'disconnected'. */
@@ -79,8 +88,6 @@ export class RTCPerfectNegotiator extends EventTarget {
       })
     }
   }
-
-  #iceRestartTimer
 
   #onIceConnectionStateChange = () => {
     if (this.#pc.iceConnectionState == 'disconnected' 
@@ -133,17 +140,20 @@ export class RTCPerfectNegotiator extends EventTarget {
     }
   }
 
-  /** Attempt to resend the signals related to the offer or answer if the connection doesn't go to stable. */
-  #beginResendTimer(resetCount = true) {
-    if (resetCount) this.#resendAttempt = 0
+  /** Attempt to resend the signals related to the next offer or answer if the connection doesn't go to stable. */
+  #beginResendTimer(reset = true) {
+    if (reset) {
+      this.#resendAttempt = 0
+      this.#outgoingSignalCache.clear()
+    }
+    clearTimeout(this.#resendTimer)
     this.#resendTimer = setTimeout(this.#onResendTimer, this.#retryTimeout)
   }
 
-  /** Clear the resend timer and the signal cache. */
+  // /** Clear the resend timer. */
   #clearResendTimer() {
     clearTimeout(this.#resendTimer)
     this.#resendTimer = false
-    this.#outgoingSignalCache.clear()
   }
 
   /** Check if we should resend our signals. */
@@ -153,7 +163,7 @@ export class RTCPerfectNegotiator extends EventTarget {
       case 'have-local-offer':    // a pending offer has not been answered
       case 'have-local-pranswer': // our answer has not been applied (from what we can infer)
         if (this.#resendAttempt < this.#maxRetries) {
-          this.#beginResendTimer(false) // restart timer, but keep the count
+          this.#beginResendTimer(false) // only restart timer (no reset)
           this.#resendCachedSignals()
           this.#emitError({
             code: 'NEGOTIATION_SIGNAL_RESEND',
@@ -162,7 +172,6 @@ export class RTCPerfectNegotiator extends EventTarget {
         } else { // max attempt reached
           // then roll back our offer or answer and pray...
           this.#pc.setLocalDescription({type: 'rollback'})
-          this.#outgoingSignalCache.clear() // and clear the discarded signals
           this.#emitError({
             code: 'NEGOTIATION_FAILURE',
             message: 'Max signal resend reached, rolling back our offer or answer; hoping for a miracle...'
@@ -202,8 +211,8 @@ export class RTCPerfectNegotiator extends EventTarget {
       this.#creatingOffer = false
     }
   }
-  #settingAnswerPending
-  // Loosely inspired by https://w3c.github.io/webrtc-pc/#perfect-negotiation-example
+  
+  // Inspired by https://w3c.github.io/webrtc-pc/#perfect-negotiation-example
   #onSignal = async ({description, candidate}) => {
     if (this.#pc.signalingState == 'closed') {
       return this.#emitError({
@@ -219,6 +228,9 @@ export class RTCPerfectNegotiator extends EventTarget {
             message: 'Invalid signal received, missing "type" or "sdp".'
           })
         }
+        if (this.#resendTimer) {
+          this.#clearResendTimer() // (channel is online)
+        }
         switch (description.type) {
           case 'offer': { // received offer
             if (this.#iceRestartTimer) { // then skip sending our own ice restart offer
@@ -227,7 +239,7 @@ export class RTCPerfectNegotiator extends EventTarget {
             const readyForOffer = !this.#creatingOffer && (this.#pc.signalingState == 'stable' || this.#settingAnswerPending)
             // const hasOwnOffer = this.#creatingOffer || this.#pc.signalingState == 'have-local-offer'
             if (readyForOffer || this.#isPolite) { // (!hasOwnOffer || this.#isPolite) 
-              this.#clearResendTimer() // in case our offer will be rolled back
+              // this.#clearResendTimer() // in case our offer will be rolled back
               this.#settingAnswerPending = true
               await this.#pc.setRemoteDescription(description) // rolls back own offer if needed (have-remote-offer)
               this.#settingAnswerPending = false
@@ -245,7 +257,7 @@ export class RTCPerfectNegotiator extends EventTarget {
                 message: 'Answer signal received without a pending offer.'
               })
             }
-            this.#clearResendTimer() // since our offer has been answered
+            // this.#clearResendTimer() // since our offer has been answered
             await this.#pc.setRemoteDescription(description) // use answer (have-remote-pranswer)
             // (this should take us to 'stable')
           return
