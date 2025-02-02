@@ -204,7 +204,8 @@ export class RTCPerfectNegotiator extends EventTarget {
       }
       // if we got here it means no error during creation
       this.#beginResendTimer() // so we can rollback if no answer received
-      this.#sendSignal(offer || this.#pc.localDescription)
+      // this.#sendSignal(offer || this.#pc.localDescription)
+      this.#sendSignal(this.#pc.localDescription)
     } catch (error) {
       this.#emitError({
         code: 'NEGOTIATION_OFFER_ERROR',
