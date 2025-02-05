@@ -83,31 +83,38 @@ export class RTCPerfectNegotiator extends EventTarget {
 
   /** This is done automatically on 'iceConnectionState' == 'disconnected'. */
   async restartIce() {
+    if (this.#iceRestartTimer) return // already scheduled then
+    if (!navigator.onLine) { 
+      this.#iceRestartTimer = true // since we're waiting for 'online'
+      window.addEventListener('online', () => { // wait til online
+        this.#timedIceRestart(1000) // let the connection settle
+      }, {once: true})
+      return // do not restart if offline
+    }
     if (this.#pc.signalingState == 'stable') {
       this.#makeOffer({iceRestart: true})
-    } else {
-      this.#emitError({
-        code: 'NEGOTIATION_LOCAL_ICE_RESTART_BLOCKED',
-        message: 'signalingState not stable'
-      })
     }
+  }
+
+  #timedIceRestart(milliseconds = 2000) {
+    this.#iceRestartTimer = setTimeout(() => {
+      this.#iceRestartTimer = false
+      if (this.#pc.iceConnectionState == 'disconnected' 
+      ||  this.#pc.iceConnectionState == 'failed') {
+        this.restartIce()
+      }
+    }, milliseconds)
   }
 
   #onIceConnectionStateChange = () => {
     if (this.#pc.iceConnectionState == 'disconnected' 
     ||  this.#pc.iceConnectionState == 'failed') {
+      if (this.#iceRestartTimer) return
       // try avoiding both attempting a restart at the same time
       if (!this.#isPolite) {
         this.restartIce()
       } else {
-        if (this.#iceRestartTimer) return
-        this.#iceRestartTimer = setTimeout(() => {
-          this.#iceRestartTimer = false
-          if (this.#pc.iceConnectionState == 'disconnected' 
-          ||  this.#pc.iceConnectionState == 'failed') {
-            this.restartIce()
-          }
-        }, 2000)
+        this.#timedIceRestart()
       }
     }
   }
