@@ -100,7 +100,9 @@ export class RTCPerfectNegotiator extends EventTarget {
       if (!this.#isPolite) {
         this.restartIce()
       } else {
+        if (this.#iceRestartTimer) return
         this.#iceRestartTimer = setTimeout(() => {
+          this.#iceRestartTimer = false
           if (this.#pc.iceConnectionState == 'disconnected' 
           ||  this.#pc.iceConnectionState == 'failed') {
             this.restartIce()
@@ -239,7 +241,7 @@ export class RTCPerfectNegotiator extends EventTarget {
         switch (description.type) {
           case 'offer': { // received offer
             if (this.#iceRestartTimer) { // then skip sending our own ice restart offer
-              clearTimeout(this.#iceRestartTimer)
+              clearTimeout(this.#iceRestartTimer); this.#iceRestartTimer = false
             }
             const readyForOffer = !this.#creatingOffer && (this.#pc.signalingState == 'stable' || this.#settingAnswerPending)
             // const hasOwnOffer = this.#creatingOffer || this.#pc.signalingState == 'have-local-offer'

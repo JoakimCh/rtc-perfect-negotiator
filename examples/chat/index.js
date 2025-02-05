@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.18', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.19', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -40,7 +40,7 @@ document.body.append(...unwrap(
         ).title('configures a TURN server')
       ).className('cleanBreak'),
       e.button('Ready for peer connection').tag('button_ready'),
-      e.button('Create chat channel').tag('button_create').disabled(true),
+      // e.button('Create chat channel').tag('button_create').disabled(true),
       e.button('Close').tag('button_close').disabled(true),
     ),
     e.div().tagAndId('chat'),
@@ -53,7 +53,10 @@ document.body.append(...unwrap(
   ).id('container')
 ))
 
-const {input_myId, input_peerId, button_ready, button_create, button_close, button_send, input_msg, chat, checkbox_turn} = tags
+const {input_myId, input_peerId, button_ready, 
+  // button_create, 
+  button_close, 
+  button_send, input_msg, chat, checkbox_turn} = tags
 
 // debug = () => {} // to disable debug
 /** If enabled debugs to chat, else debug() */
@@ -92,11 +95,6 @@ button_ready.onclick = async () => {
   initPeerConnection(myId, peerId, idSuffix)
 }
 
-button_create.onclick = async () => {
-  const channel = peerConnection.createDataChannel('chat')
-  peerConnection.ondatachannel({channel}) // must trigger it manually then
-}
-
 button_send.onclick = () => {
   const message = input_msg.value
   dataChannel.send(message)
@@ -112,15 +110,11 @@ input_msg.onkeydown = ({key}) => {
 
 globalThis['DEBUG_SIGNALING'] = true
 const idSuffix = '-jlcRtcTest'
-let myId, peerId, signalingChannel
+let myId, peerId
 /** @type {PeerServerSignalingClient} */
 let signalingClient
-/** @type {RTCPerfectNegotiator} */
-let negotiator
 /** @type {RTCPeerConnection} */
 let peerConnection
-/** @type {RTCDataChannel} */
-let dataChannel
 const iceConfig = {
   iceServers: [{
     urls: [
@@ -161,13 +155,13 @@ function onChatMessage(message) {
 
 /** Since there are no reliable events on the RTCPeerConnection to monitor when it is closed we use a data channel to trigger this when it is closed. */
 function onClosed() {
-  debug('connection closed')
+  displayChatMessage('Connection closed...')
   // reset all buttons
   input_myId.disabled = false
   input_peerId.disabled = false
   button_ready.disabled = false
   checkbox_turn.disabled = false
-  button_create.disabled = true
+  // button_create.disabled = true
   button_close.disabled = true
   button_send.disabled = true
 }
@@ -205,8 +199,8 @@ async function initPeerConnection(myId, peerId, suffix) {
     return
   }
   // signaling server ready
-  signalingChannel = signalingClient.getChannel(peerId)
-  negotiator = new RTCPerfectNegotiator({
+  const signalingChannel = signalingClient.getChannel(peerId)
+  const negotiator = new RTCPerfectNegotiator({
     peerConfiguration: (checkbox_turn.checked ? iceConfigWithTURN : iceConfig),
     signalingChannel
   })
@@ -216,7 +210,8 @@ async function initPeerConnection(myId, peerId, suffix) {
   peerConnection = negotiator.peerConnection
   debug('peerConfiguration:', peerConnection.getConfiguration())
   initPeerConnectionEvents(peerConnection)
-  button_create.disabled = false
+  initChatChannel(peerConnection)
+  // button_create.disabled = false
   // negotiation is not done before a channel or track is added
 }
 
@@ -224,74 +219,66 @@ async function initPeerConnection(myId, peerId, suffix) {
  * @param {RTCPeerConnection} peerConnection 
  */
 function initPeerConnectionEvents(peerConnection) {
-  peerConnection.addEventListener('negotiationneeded', () => {
+  peerConnection.onnegotiationneeded = () => {
     debugToChat('[negotiation needed]')
-  })
+  }
   peerConnection.onsignalingstatechange = async () => {
     debugToChat('## signaling state ##', peerConnection.signalingState)
   }
   peerConnection.oniceconnectionstatechange = async () => {
     debugToChat('## ICE connection ##', peerConnection.iceConnectionState)
   }
-
-  peerConnection.ondatachannel = ({channel}) => { // addEventListener('datachannel'
+  peerConnection.ondatachannel = ({channel}) => {
     debug('new data channel:', channel.label, peerConnection.connectionState, peerConnection.signalingState)
-    dataChannel = channel
-    button_create.disabled = true
-    let closeTimeout, hasBeenOpen
-    const openTimeout = setTimeout(() => {
-      debug('data channel open timeout', peerConnection.connectionState, peerConnection.signalingState)
-      closeTimeout = setTimeout(() => {
-        // sometimes the close event doesn't happen on channel.close(), hence we need to trigger it manually then
-        debug('data channel forced close event', peerConnection.connectionState, peerConnection.signalingState)
-        channel.onclose?.()
-      }, 1000)
-      channel.close()
-    }, 2000)
-    channel.onmessage = ({data}) => {
-      debug('data received:', data)
-      if (typeof data == 'string') {
-        onChatMessage(data)
-      }
-    }
-    channel.onopen = () => {
-      debug('data channel opened')
-      hasBeenOpen = true
-      clearTimeout(openTimeout)
-      peerConnection.getStats().then(reports => {
-        for (const [id, report] of reports) {
-          if (report.type == 'candidate-pair' && report.nominated) {
-            const localCandidate = reports.get(report.localCandidateId)
-            const remoteCandidate = reports.get(report.remoteCandidateId)
-            const [local, remote] = [localCandidate.candidateType, remoteCandidate.candidateType]
-            if (localCandidate.candidateType == 'relay' || remoteCandidate.candidateType == 'relay') {
-              displayChatMessage(`Relayed connection successful! (${local}, ${remote})`)
-            } else {
-              displayChatMessage(`Direct connection successful! (${local}, ${remote})`)
-            }
-          }
-        }
-      })
-      input_msg.focus()
-      button_send.disabled = false
-      button_close.disabled = false
-    }
-    channel.onerror = ({error}) => {
-      // this will happen if other side e.g. refresh the tab
-      debug('data channel error:', error)
-    }
-    channel.onclose = () => {
-      debug('data channel closed:', peerConnection.connectionState, peerConnection.signalingState)
-      clearTimeout(openTimeout)
-      clearTimeout(closeTimeout)
-      if (hasBeenOpen) {
-        displayChatMessage('Connection closed...')
-        // displayChatMessage(peerId+' has left the chat.')
-      } else {
-        displayChatMessage(`Unable to connect to: ${peerId}...`)
-      }
-      peerConnection.close() // if it isn't already
-      onClosed() // (since there is no reliable events to monitor when a peerConnection is closed we use a data channel to know when)
-    }
   }
 }
+
+function initChatChannel(peerConnection) {
+  const channel = peerConnection.createDataChannel('chat', {
+    negotiated: true, // negotiated out of-band (manually)
+    id: 0 // must match peer
+  })
+
+  channel.onmessage = ({data}) => {
+    debug('data received:', data)
+    if (typeof data == 'string') {
+      onChatMessage(data)
+    }
+  }
+
+  channel.onopen = () => {
+    debug('data channel opened')
+    // hasBeenOpen = true
+    clearTimeout(openTimeout)
+    peerConnection.getStats().then(reports => {
+      for (const [id, report] of reports) {
+        if (report.type == 'candidate-pair' && report.nominated) {
+          const localCandidate = reports.get(report.localCandidateId)
+          const remoteCandidate = reports.get(report.remoteCandidateId)
+          const [local, remote] = [localCandidate.candidateType, remoteCandidate.candidateType]
+          if (localCandidate.candidateType == 'relay' || remoteCandidate.candidateType == 'relay') {
+            displayChatMessage(`Relayed connection successful! (${local}, ${remote})`)
+          } else {
+            displayChatMessage(`Direct connection successful! (${local}, ${remote})`)
+          }
+        }
+      }
+    })
+    input_msg.focus()
+    button_send.disabled = false
+    button_close.disabled = false
+  }
+
+  channel.onerror = ({error}) => {
+    // this will happen if other side e.g. refresh the tab
+    debug('data channel error:', error)
+  }
+
+  channel.onclose = () => {
+    debug('data channel closed:', peerConnection.connectionState, peerConnection.signalingState)
+    peerConnection.close() // if it isn't already
+    onClosed() // (since there is no reliable events to monitor when a peerConnection is closed we use a data channel to know when)
+  }
+
+}
+
