@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.25', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.26', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -42,7 +42,7 @@ document.body.append(...unwrap(
           e.input().type('checkbox')
           .checked(!globalThis.disableIceRestart)
           .on('change', ({target}) => globalThis.disableIceRestart = !target.checked)
-        )
+        ).title(`These are needed for connection recovery, but for educational purposes you're allowed to see what happens without them...`),
       ).className('cleanBreak'),
       e.button('Ready for peer connection').tag('button_ready'),
       e.button('Try to connect').tag('button_connect').disabled(true),
