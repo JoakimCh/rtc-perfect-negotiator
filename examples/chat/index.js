@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.19', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.20', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -40,7 +40,7 @@ document.body.append(...unwrap(
         ).title('configures a TURN server')
       ).className('cleanBreak'),
       e.button('Ready for peer connection').tag('button_ready'),
-      // e.button('Create chat channel').tag('button_create').disabled(true),
+      e.button('Try to connect').tag('button_connect').disabled(true),
       e.button('Close').tag('button_close').disabled(true),
     ),
     e.div().tagAndId('chat'),
@@ -54,9 +54,43 @@ document.body.append(...unwrap(
 ))
 
 const {input_myId, input_peerId, button_ready, 
-  // button_create, 
+  button_connect, 
   button_close, 
   button_send, input_msg, chat, checkbox_turn} = tags
+
+globalThis['DEBUG_SIGNALING'] = true
+const idSuffix = '-jlcRtcTest'
+let myId, peerId
+/** @type {PeerServerSignalingClient} */
+let signalingClient
+/** @type {RTCPeerConnection} */
+let peerConnection
+/** @type {RTCDataChannel} */
+let chatChannel
+const iceConfig = {
+  iceServers: [{
+    urls: [
+      'stun:stun.l.google.com:19302',
+      'stun:stun1.l.google.com:19302',
+      'stun:stun2.l.google.com:19302',
+      'stun:stun3.l.google.com:19302',
+      'stun:stun4.l.google.com:19302',
+    ]
+  }]
+}
+// from the PeerJS project: https://github.com/peers/peerjs/blob/master/lib/util.ts
+const iceConfigWithTURN = {
+  iceServers: [
+    ...iceConfig.iceServers, {
+      username: 'peerjs',
+      credential: 'peerjsp',
+      urls: [
+        'turn:eu-0.turn.peerjs.com:3478',
+        'turn:us-0.turn.peerjs.com:3478',
+      ]
+    }
+  ]
+}
 
 // debug = () => {} // to disable debug
 /** If enabled debugs to chat, else debug() */
@@ -71,6 +105,12 @@ window.addEventListener('offline', () => {
 window.addEventListener('online', () => {
   debugToChat('Network connection online.')
 })
+
+button_connect.onclick = () => {
+  button_connect.disabled = true
+  chatChannel = peerConnection.createDataChannel('chat')
+  initChatChannel()
+}
 
 button_close.onclick = () => {
   button_close.disabled = true
@@ -108,38 +148,6 @@ input_msg.onkeydown = ({key}) => {
   }
 }
 
-globalThis['DEBUG_SIGNALING'] = true
-const idSuffix = '-jlcRtcTest'
-let myId, peerId
-/** @type {PeerServerSignalingClient} */
-let signalingClient
-/** @type {RTCPeerConnection} */
-let peerConnection
-const iceConfig = {
-  iceServers: [{
-    urls: [
-      'stun:stun.l.google.com:19302',
-      'stun:stun1.l.google.com:19302',
-      'stun:stun2.l.google.com:19302',
-      'stun:stun3.l.google.com:19302',
-      'stun:stun4.l.google.com:19302',
-    ]
-  }]
-}
-// from the PeerJS project: https://github.com/peers/peerjs/blob/master/lib/util.ts
-const iceConfigWithTURN = {
-  iceServers: [
-    ...iceConfig.iceServers, {
-      username: 'peerjs',
-      credential: 'peerjsp',
-      urls: [
-        'turn:eu-0.turn.peerjs.com:3478',
-        'turn:us-0.turn.peerjs.com:3478',
-      ]
-    }
-  ]
-}
-
 function displayChatMessage(message) {
   const msg = e.p(message)
   chat.append(msg.element)
@@ -161,7 +169,6 @@ function onClosed() {
   input_peerId.disabled = false
   button_ready.disabled = false
   checkbox_turn.disabled = false
-  // button_create.disabled = true
   button_close.disabled = true
   button_send.disabled = true
 }
@@ -208,11 +215,10 @@ async function initPeerConnection(myId, peerId, suffix) {
   negotiator.addEventListener('error', ({detail: {message, code}}) => {
     debugToChat(`error: ${code} (${peerConnection.signalingState}) ${message}`)})
   peerConnection = negotiator.peerConnection
-  debug('peerConfiguration:', peerConnection.getConfiguration())
+  button_connect.disabled = false // allow chat channel creation
   initPeerConnectionEvents(peerConnection)
-  initChatChannel(peerConnection)
-  // button_create.disabled = false
-  // negotiation is not done before a channel or track is added
+  // debug('peerConfiguration:', peerConnection.getConfiguration())
+  // (negotiation is not done before a channel or track is added)
 }
 
 /**
@@ -220,65 +226,70 @@ async function initPeerConnection(myId, peerId, suffix) {
  */
 function initPeerConnectionEvents(peerConnection) {
   peerConnection.onnegotiationneeded = () => {
-    debugToChat('[negotiation needed]')
+    debugToChat('## negotiation needed ##')
+  }
+  peerConnection.onconnectionstatechange = () => {
+    debugToChat('## connection state ##', peerConnection.connectionState)
+    switch (peerConnection.connectionState) {
+      case 'connected': displayConnectionStats(); break
+    }
   }
   peerConnection.onsignalingstatechange = async () => {
-    debugToChat('## signaling state ##', peerConnection.signalingState)
+    debug('## signaling state ##', peerConnection.signalingState)
   }
   peerConnection.oniceconnectionstatechange = async () => {
-    debugToChat('## ICE connection ##', peerConnection.iceConnectionState)
+    debug('## ICE connection state ##', peerConnection.iceConnectionState)
   }
   peerConnection.ondatachannel = ({channel}) => {
     debug('new data channel:', channel.label, peerConnection.connectionState, peerConnection.signalingState)
+    if (!chatChannel && channel.label == 'chat') {
+      chatChannel = channel
+      initChatChannel()
+    }
   }
 }
 
-function initChatChannel(peerConnection) {
-  const channel = peerConnection.createDataChannel('chat', {
-    negotiated: true, // negotiated out of-band (manually)
-    id: 0 // must match peer
-  })
-
-  channel.onmessage = ({data}) => {
-    debug('data received:', data)
-    if (typeof data == 'string') {
-      onChatMessage(data)
-    }
-  }
-
-  channel.onopen = () => {
-    debug('data channel opened')
-    // hasBeenOpen = true
-    clearTimeout(openTimeout)
-    peerConnection.getStats().then(reports => {
-      for (const [id, report] of reports) {
-        if (report.type == 'candidate-pair' && report.nominated) {
-          const localCandidate = reports.get(report.localCandidateId)
-          const remoteCandidate = reports.get(report.remoteCandidateId)
-          const [local, remote] = [localCandidate.candidateType, remoteCandidate.candidateType]
-          if (localCandidate.candidateType == 'relay' || remoteCandidate.candidateType == 'relay') {
-            displayChatMessage(`Relayed connection successful! (${local}, ${remote})`)
-          } else {
-            displayChatMessage(`Direct connection successful! (${local}, ${remote})`)
-          }
+function displayConnectionStats() {
+  peerConnection.getStats().then(reports => {
+    for (const [id, report] of reports) {
+      if (report.type == 'candidate-pair' && report.nominated) {
+        const localCandidate = reports.get(report.localCandidateId)
+        const remoteCandidate = reports.get(report.remoteCandidateId)
+        const [local, remote] = [localCandidate.candidateType, remoteCandidate.candidateType]
+        if (localCandidate.candidateType == 'relay' || remoteCandidate.candidateType == 'relay') {
+          displayChatMessage(`Relayed connection successful! (${local}, ${remote})`)
+        } else {
+          displayChatMessage(`Direct connection successful! (${local}, ${remote})`)
         }
       }
-    })
+    }
+  })
+}
+
+function initChatChannel() {
+  button_connect.disabled = true
+  
+  chatChannel.onopen = () => {
+    debug('chat channel opened')
     input_msg.focus()
     button_send.disabled = false
     button_close.disabled = false
   }
-
-  channel.onerror = ({error}) => {
-    // this will happen if other side e.g. refresh the tab
-    debug('data channel error:', error)
+  chatChannel.onmessage = ({data}) => {
+    debug('message received:', data)
+    if (typeof data == 'string') {
+      onChatMessage(data)
+    }
   }
-
-  channel.onclose = () => {
-    debug('data channel closed:', peerConnection.connectionState, peerConnection.signalingState)
+  chatChannel.onerror = ({error}) => {
+    // this will happen if other side e.g. refresh the tab
+    debug('chat channel error:', error)
+  }
+  chatChannel.onclose = () => {
+    debug('chat channel closed:', peerConnection.connectionState, peerConnection.signalingState)
     peerConnection.close() // if it isn't already
+    chatChannel = false
+    button_connect.disabled = false
     onClosed() // (since there is no reliable events to monitor when a peerConnection is closed we use a data channel to know when)
   }
-
 }
-
