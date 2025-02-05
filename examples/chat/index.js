@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.20', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.21', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -137,7 +137,7 @@ button_ready.onclick = async () => {
 
 button_send.onclick = () => {
   const message = input_msg.value
-  dataChannel.send(message)
+  chatChannel.send(message)
   wrap(input_msg).value('').focus() // (when wrapped we can use chaining)
   displayChatMessage(myId+': '+message)
 }
@@ -155,6 +155,7 @@ function displayChatMessage(message) {
     block: 'nearest',
     behavior: 'smooth'
   })
+  input_msg.scrollIntoView({block: 'end'})
 }
 
 function onChatMessage(message) {
