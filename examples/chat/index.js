@@ -13,7 +13,7 @@ pageSetup({
 document.body.append(...unwrap(
   e.div(
     e.h1('Chat Example'),
-    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.24', 
+    e.p('A WebRTC example using my RTCPerfectNegotiator and PeerServerSignalingClient classes to do most of the heavy lifting. Current version: 0.25', 
       // e.span('loading...').onceAdded(self => {
       //   fetch('https://api.github.com/repos/JoakimCh/rtc-perfect-negotiator/commits/main')
       //   .then(response => response.json())
@@ -36,8 +36,13 @@ document.body.append(...unwrap(
         e.label('Allow using relays around NAT:', 
           e.input().type('checkbox').tagAndId('checkbox_turn')
           .checked('true' == sessionStorage.getItem('checkbox_turn'))
-          .on('change', () => sessionStorage.setItem('checkbox_turn', checkbox_turn.checked))
-        ).title('configures a TURN server')
+          .on('change', ({target}) => sessionStorage.setItem('checkbox_turn', target.checked))
+        ).title('configures a TURN server'),
+        e.label('Auto ICE restarts:', 
+          e.input().type('checkbox')
+          .checked(!globalThis.disableIceRestart)
+          .on('change', ({target}) => globalThis.disableIceRestart = !target.checked)
+        )
       ).className('cleanBreak'),
       e.button('Ready for peer connection').tag('button_ready'),
       e.button('Try to connect').tag('button_connect').disabled(true),
@@ -170,6 +175,7 @@ function onClosed() {
   input_peerId.disabled = false
   button_ready.disabled = false
   checkbox_turn.disabled = false
+  button_connect.disabled = true
   button_close.disabled = true
   button_send.disabled = true
 }

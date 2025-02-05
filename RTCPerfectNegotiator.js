@@ -91,7 +91,7 @@ export class RTCPerfectNegotiator extends EventTarget {
       }, {once: true})
       return // do not restart if offline
     }
-    if (this.#pc.signalingState == 'stable') {
+    if (this.#pc.signalingState == 'stable' && !globalThis.disableIceRestart) {
       this.#makeOffer({iceRestart: true})
     }
   }
