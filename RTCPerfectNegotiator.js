@@ -159,15 +159,21 @@ export class RTCPerfectNegotiator extends EventTarget {
       this.#resendAttempt = 0
       this.#outgoingSignalCache.clear()
     }
-    clearTimeout(this.#resendTimer)
+    this.#clearResendTimer()
     this.#resendTimer = setTimeout(this.#onResendTimer, this.#retryTimeout)
   }
 
   // /** Clear the resend timer. */
   #clearResendTimer() {
+    if (this.#resendOnOnlineEvent) {
+      window.removeEventListener('online', this.#resendOnOnlineEvent)
+      this.#resendOnOnlineEvent = false
+    }
     clearTimeout(this.#resendTimer)
     this.#resendTimer = false
   }
+
+  #resendOnOnlineEvent
 
   /** Check if we should resend our signals. */
   #onResendTimer = () => {
@@ -176,6 +182,17 @@ export class RTCPerfectNegotiator extends EventTarget {
       case 'have-local-offer':    // a pending offer has not been answered
       case 'have-local-pranswer': // our answer has not been applied (from what we can infer)
         if (this.#resendAttempt < this.#maxRetries) {
+          if (!navigator.onLine) {
+            // schedule resend when online?
+            if (!this.#resendOnOnlineEvent) { // if not already waiting
+              this.#resendOnOnlineEvent = () => {
+                this.#resendOnOnlineEvent = false
+                this.#onResendTimer()
+              }
+              window.addEventListener('online', this.#resendOnOnlineEvent, {once: true})
+            }
+            return // no offline resend
+          }
           this.#emitError({
             code: 'NEGOTIATION_SIGNAL_RESEND',
             message: 'Resending signals since not yet stable.'
